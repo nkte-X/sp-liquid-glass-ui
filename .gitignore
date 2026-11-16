@@ -6,3 +6,6 @@ plugin/dist/
 shots/
 # old unrelated experiment, kept locally
 themes/macos-liquid-glass.css
+
+# local specs and notes: never commit
+docs/

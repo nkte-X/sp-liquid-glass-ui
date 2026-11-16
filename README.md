@@ -75,7 +75,6 @@ Layout:
 - `plugin/`: the plugin (host script in `src/plugin.ts` + `src/host/`,
   settings UI in `src/app/`, Solid.js)
 - `preview/ios-preview.html`: mock app page for the smoke test
-- `docs/`: design spec and audit notes (Russian)
 
 ## License
 
