@@ -1,0 +1,650 @@
+/* iOS Settings-style grouped list built on the theme variables the host
+ * injects into the iframe (src/app/plugins/util/plugin-theme-vars.ts), so it
+ * follows light/dark and any theme live. */
+
+:root {
+  /* No color-scheme here: it must match the host's <iframe> element
+   * ('normal'), or the browser paints an opaque canvas under this page and
+   * hides the wallpaper (dark band under the header). */
+  --group-bg: var(--task-c-bg, var(--bg-lighter));
+  --sep: var(--divider-color);
+  --tint: var(--c-primary);
+  --ok: var(--color-success, #34c759);
+  --bad: var(--color-danger, #ff3b30);
+
+  /* Radius system, concentric (theme: docs/liquid-glass-fixes.md §4):
+   * nested radius = container radius − the padding between them. Only these
+   * tokens, 999px (capsules) and 50% (circles) are used as radii. */
+  --r-group: 22px;
+  --pad-group: 8px;
+  --r-inner: calc(var(--r-group) - var(--pad-group));
+  --r-control: calc(var(--r-inner) - 4px);
+  --r-mini: calc(var(--r-inner) - 6px);
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-primary-stack, -apple-system, system-ui, sans-serif);
+  color: var(--text-color);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.page {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 16px 16px 48px;
+}
+
+h1 {
+  margin: 8px 4px 16px;
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+h2 {
+  margin: 24px 16px 6px;
+  font-size: 13px;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--text-color-muted);
+}
+
+.group {
+  overflow: hidden;
+  border-radius: var(--r-group);
+  background: var(--group-bg);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 8px 16px;
+  box-sizing: border-box;
+  cursor: pointer;
+}
+
+.row + .row,
+.row + details,
+.segmented + .row-note {
+  border-top: 0.5px solid var(--sep);
+}
+
+.row-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.row-title {
+  font-size: 16px;
+  overflow-wrap: anywhere;
+}
+
+.row-note {
+  font-size: 13px;
+  color: var(--text-color-muted);
+}
+
+.pad {
+  padding: 10px 16px;
+  margin: 0;
+}
+
+.muted {
+  color: var(--text-color-muted);
+  font-size: 15px;
+}
+
+.ok {
+  color: var(--ok);
+  font-weight: 600;
+}
+
+.bad {
+  color: var(--bad);
+  font-weight: 600;
+}
+
+/* iOS switch, drawn in CSS so it looks the same in WebKit and Chromium
+ * (Chromium ignores the `switch` attribute and would show a checkbox). */
+.switch {
+  -webkit-appearance: none;
+  appearance: none;
+  position: relative;
+  flex: none;
+  box-sizing: border-box;
+  width: 51px;
+  height: 31px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(120, 120, 128, 0.22);
+  cursor: pointer;
+  transition: background-color 0.25s ease;
+}
+
+.switch::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow:
+    0 3px 8px rgba(0, 0, 0, 0.15),
+    0 3px 1px rgba(0, 0, 0, 0.06);
+  transition: transform 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+
+.switch:checked {
+  background: var(--ok);
+}
+
+.switch:checked::before {
+  transform: translateX(20px);
+}
+
+.switch:focus-visible {
+  outline: 2px solid var(--tint);
+  outline-offset: 2px;
+}
+
+.segmented {
+  display: flex;
+  gap: 2px;
+  margin: 8px;
+  padding: 2px;
+  border-radius: 999px;
+  background: rgba(120, 120, 128, 0.16);
+}
+
+.segmented button {
+  flex: 1;
+  min-height: 32px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.segmented button.on {
+  background: var(--group-bg);
+  font-weight: 600;
+  box-shadow:
+    0 3px 8px rgba(0, 0, 0, 0.12),
+    0 0 0 0.5px rgba(0, 0, 0, 0.04);
+}
+
+.banner {
+  margin: 0 0 12px;
+  padding: 12px 16px;
+  border-radius: var(--r-inner);
+  background: color-mix(in srgb, var(--tint) 14%, transparent);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.banner-error {
+  background: color-mix(in srgb, var(--bad) 16%, transparent);
+}
+
+.banner code {
+  margin: 0 4px;
+}
+
+details summary {
+  cursor: pointer;
+  font-size: 15px;
+  color: var(--tint);
+}
+
+pre {
+  margin: 8px 0 0;
+  max-height: 320px;
+  overflow: auto;
+  font-size: 11px;
+  line-height: 1.35;
+  white-space: pre-wrap;
+  word-break: break-all;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.actions button {
+  flex: 1;
+  min-height: 48px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--group-bg);
+  color: var(--tint);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.actions button.destructive {
+  color: var(--bad);
+}
+
+button:disabled,
+.switch:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.swatches {
+  display: grid;
+  align-items: start;
+  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+  gap: 8px;
+  padding: 0 12px 12px;
+}
+
+.swatch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.swatch-color {
+  width: 100%;
+  aspect-ratio: 1;
+  max-width: 56px;
+  border-radius: var(--r-inner);
+  box-shadow:
+    inset 0 0 0 0.5px rgba(0, 0, 0, 0.12),
+    0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.swatch.on .swatch-color {
+  outline: 2.5px solid var(--tint);
+  outline-offset: 2px;
+}
+
+.swatch {
+  min-width: 0;
+  min-height: 0;
+}
+
+/* Names stay on one line so every tile keeps the same height. */
+.swatch-label {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-color-muted);
+}
+
+.swatch.on .swatch-label {
+  color: var(--text-color);
+  font-weight: 600;
+}
+
+.swatch-add {
+  display: grid;
+  place-items: center;
+  font-size: 26px;
+  color: var(--tint);
+  background: rgba(120, 120, 128, 0.12);
+}
+
+/* colour dots */
+.colors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 0 16px 14px;
+}
+
+.colors {
+  align-items: center;
+}
+
+/* The UI kit gives buttons a min-height/min-width; reset them or the dots
+ * stretch into ovals. */
+.dot {
+  position: relative;
+  box-sizing: border-box;
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
+  min-width: 0;
+  min-height: 0;
+  max-height: 32px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  line-height: 32px;
+  text-align: center;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.15);
+}
+
+.dot.on {
+  outline: 2.5px solid var(--text-color);
+  outline-offset: 2px;
+}
+
+.dot-app {
+  background: rgba(120, 120, 128, 0.16);
+  color: var(--text-color-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.dot-custom {
+  display: inline-block;
+  overflow: hidden;
+  background: conic-gradient(#ff3b30, #ff9500, #ffcc00, #34c759, #30b0c7, #007aff, #af52de, #ff3b30);
+}
+
+.dot-custom input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+
+/* wallpaper editor */
+.editor {
+  padding-bottom: 12px;
+}
+
+.preview {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  height: 150px;
+}
+
+.preview-half {
+  display: grid;
+  place-items: center;
+}
+
+.preview-card {
+  padding: 10px 18px;
+  border-radius: var(--r-inner);
+  font-size: 13px;
+  font-weight: 600;
+  backdrop-filter: blur(18px) saturate(170%);
+  -webkit-backdrop-filter: blur(18px) saturate(170%);
+}
+
+.preview-card.light {
+  background: rgba(255, 255, 255, 0.45);
+  color: #1c1c1e;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+.preview-card.dark {
+  background: rgba(40, 42, 52, 0.45);
+  color: #f5f5f7;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.field,
+.field-row,
+.slider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  font-size: 14px;
+}
+
+.field input[type='text'] {
+  flex: 1;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--r-control);
+  background: rgba(120, 120, 128, 0.14);
+  color: inherit;
+  font: inherit;
+}
+
+.field-row.space {
+  justify-content: space-between;
+}
+
+.field-label {
+  color: var(--text-color-muted);
+  font-size: 13px;
+}
+
+.color-input {
+  width: 34px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-mini);
+  background: none;
+  cursor: pointer;
+}
+
+.slider span:first-child {
+  width: 110px;
+  flex: none;
+  color: var(--text-color-muted);
+  font-size: 13px;
+}
+
+.slider input {
+  flex: 1;
+  accent-color: var(--tint);
+}
+
+.slider-val {
+  width: 40px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+}
+
+.blob {
+  margin: 4px 12px;
+  border-radius: var(--r-inner);
+  background: rgba(120, 120, 128, 0.08);
+}
+
+.link-btn {
+  border: 0;
+  background: none;
+  color: var(--tint);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.link-btn.destructive {
+  color: var(--bad);
+}
+
+.actions button.primary {
+  background: var(--tint);
+  color: #fff;
+}
+
+.editor .actions {
+  padding: 0 12px;
+}
+
+/* ---- Materials (HIG: glass only on controls and chrome; a grouped form is
+ * content, so its groups are solid cells like iOS Settings — no blur, no
+ * rim, no glass on glass). The page itself stays transparent over the
+ * wallpaper; groups are near-opaque cells on top of it. */
+.group {
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: none;
+}
+
+html.dark .group {
+  background: rgba(28, 28, 30, 0.9);
+}
+
+/* Segmented control: a recessed track, the selected segment is a flat
+ * lighter fill (no drop shadow — it is not a second lens). */
+.segmented {
+  background: rgba(118, 118, 128, 0.12);
+}
+
+.segmented button {
+  color: var(--text-color-muted);
+  transition:
+    background-color 0.25s ease,
+    color 0.2s ease;
+}
+
+.segmented button.on {
+  color: var(--text-color);
+  font-weight: 600;
+  background: #ffffff;
+  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.06);
+}
+
+html.dark .segmented {
+  background: rgba(118, 118, 128, 0.24);
+}
+
+html.dark .segmented button.on {
+  color: #ffffff;
+  background: #636366;
+  box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.12);
+}
+
+/* Plain iOS buttons: neutral fill, tint only for the primary action. */
+.actions button {
+  background: rgba(118, 118, 128, 0.12);
+  box-shadow: none;
+}
+
+html.dark .actions button {
+  background: rgba(118, 118, 128, 0.24);
+}
+
+.actions button.primary {
+  background: var(--tint);
+  color: #fff;
+}
+
+html.dark .swatch.on .swatch-label {
+  color: #ffffff;
+}
+
+html.dark .swatch.on .swatch-color {
+  outline-color: #0a84ff;
+}
+
+html.dark .dot.on {
+  outline-color: #ffffff;
+}
+
+html.dark .switch {
+  background: rgba(120, 120, 128, 0.36);
+}
+
+html.dark .switch:disabled {
+  opacity: 0.35;
+}
+
+html.dark .banner {
+  background: color-mix(in srgb, var(--tint) 24%, transparent);
+}
+
+html.dark .blob,
+html.dark .field input[type='text'] {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+html.dark .switch:checked {
+  background: var(--ok);
+}
+
+/* ---- Reduce Transparency: everything solid ---- */
+@media (prefers-reduced-transparency: reduce) {
+  .group {
+    background: #ffffff;
+  }
+  html.dark .group {
+    background: #1c1c1e;
+  }
+  .preview-card {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .preview-card.light {
+    background: #ffffff;
+  }
+  .preview-card.dark {
+    background: #2c2c2e;
+  }
+}
+
+/* ---- Increase Contrast: outlines and stronger secondary text ---- */
+@media (prefers-contrast: more) {
+  :root {
+    --text-color-muted: rgba(60, 60, 67, 0.85);
+  }
+  html.dark {
+    --text-color-muted: rgba(235, 235, 245, 0.85);
+  }
+  .group,
+  .segmented,
+  .actions button {
+    outline: 1px solid var(--text-color-muted);
+    outline-offset: -1px;
+  }
+  .group {
+    background: #ffffff;
+  }
+  html.dark .group {
+    background: #1c1c1e;
+  }
+}
+
+.accent-dark {
+  border-top: 0.5px solid var(--sep);
+}
+
+.accent-dark-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.accent-dark .link-btn.on {
+  color: var(--text-color-muted);
+}

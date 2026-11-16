@@ -1,0 +1,1224 @@
+/* =====================================================================
+ * iOS 26 LIQUID GLASS LAYER
+ *
+ * Appended on top of the upstream built-in liquid-glass.css (see
+ * themes/src/base-liquid-glass.css). Everything here is additive:
+ * delete this block and the theme falls back to upstream behaviour.
+ *
+ * Rules:
+ *   - Mode switching keys off body.isDarkTheme only (never
+ *     prefers-color-scheme: the app has its own light/dark/system setting).
+ *   - Platform scoping keys off body classes the app already sets:
+ *     isIOS, isIPad, isNativeMobile, isTouchPrimary, hasMobileBottomNav.
+ *   - Content stays near-opaque (upstream Tier A). Glass is reserved for
+ *     chrome: tab bar, add button, header action groups, sheets, menus.
+ *   - Classes prefixed `lgx-` are reserved for the ios-glass-layer plugin.
+ *
+ * Spec: docs/design-spec.md
+ * ===================================================================== */
+
+/* ---------------------------------------------------------
+ * iOS system palette + chrome glass recipe (all platforms)
+ * --------------------------------------------------------- */
+
+body {
+  color-scheme: light;
+
+  /* Read by the plugin's diagnostics to tell which theme build a device
+   * actually has installed (themes are stored per device). Bump on change. */
+  --lgx-theme-version: '1.0.0';
+
+  --lgx-blue: #007aff;
+  --lgx-green: #34c759;
+  --lgx-red: #ff3b30;
+  --lgx-orange: #ff9500;
+  --lgx-yellow: #ffcc00;
+  --lgx-gray: #8e8e93;
+
+  --lgx-label: #000000;
+  --lgx-label-2: rgba(60, 60, 67, 0.6);
+  --lgx-label-3: rgba(60, 60, 67, 0.3);
+  --lgx-fill: rgba(120, 120, 128, 0.2);
+  --lgx-fill-2: rgba(120, 120, 128, 0.16);
+  --lgx-separator: rgba(60, 60, 67, 0.29);
+  --lgx-grouped-bg: #f2f2f7;
+  --lgx-grouped-cell: #ffffff;
+
+  /* Tint for selected tab / prominent glass. Follows the user's primary
+   * colour picker; pick system blue (#007aff) there for the stock look. */
+  --lgx-tint: var(--palette-primary-500);
+
+  /* Chrome glass (iOS 26 "regular" variant) */
+  --lgx-glass-bg: rgba(255, 255, 255, 0.52);
+  --lgx-glass-blur: 22px;
+  --lgx-glass-saturate: 190%;
+  --lgx-glass-lens: rgba(0, 0, 0, 0.07);
+  --lgx-glass-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    inset 0 -0.5px 0 rgba(0, 0, 0, 0.05),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.4),
+    0 6px 24px rgba(0, 0, 0, 0.1),
+    0 0 0 0.5px rgba(0, 0, 0, 0.06);
+  --lgx-glass-prominent-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.08),
+    0 6px 20px rgba(0, 0, 0, 0.14),
+    0 0 0 0.5px rgba(0, 0, 0, 0.06);
+
+  /* Geometry */
+  --lgx-tabbar-h: 62px;
+  --lgx-tabbar-inset: 16px;
+  --lgx-tabbar-gap: 10px;
+  --lgx-tabbar-bottom: max(calc(var(--safe-area-bottom) - 12px), 12px);
+
+  /* Radius system (docs/liquid-glass-fixes.md §4). Outer containers are
+   * tokens; anything nested is derived: inner = outer − padding (the CSS
+   * take on SwiftUI's ConcentricRectangle). Only these tokens, 0, 999px
+   * (capsules) and 50% (circles) appear as border-radius values. */
+  --lgx-r-window: 26px; /* macOS Tahoe window corner; re-measure on device */
+  --lgx-r-sheet: 38px;
+  --lgx-r-alert: 34px; /* dialogs on touch */
+  --lgx-r-dialog: 26px; /* dialogs on desktop, like macOS alerts */
+  --lgx-r-panel: 22px; /* sidebar, floating panels */
+  --lgx-r-menu: 24px; /* menus, autocomplete, snackbar */
+  --lgx-r-row: 18px; /* task rows, inline add bar */
+  --lgx-r-group: 16px; /* inset-grouped blocks (details) */
+  --lgx-r-field: 14px; /* filled text fields */
+  --lgx-r-inline: 5px; /* inline text marks (syntax highlight) */
+  --lgx-pad-panel: 8px; /* sidebar rows are inset this much */
+  --lgx-pad-card: 8px; /* compose card → submit button */
+  --lgx-pad-row: 4px; /* task row → nested sub-task block */
+  --lgx-r-nav-item: calc(var(--lgx-r-panel) - var(--lgx-pad-panel));
+  --lgx-r-sub: calc(var(--lgx-r-row) - var(--lgx-pad-row));
+  /* legacy names, kept for the plugin and older overrides */
+  --lgx-radius-sheet: var(--lgx-r-sheet);
+  --lgx-radius-alert: var(--lgx-r-alert);
+  --lgx-radius-menu: var(--lgx-r-menu);
+  --lgx-radius-row: var(--lgx-r-row);
+
+  /* Motion */
+  --lgx-spring: cubic-bezier(0.2, 0.9, 0.3, 1.25);
+  --lgx-ease: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* Plugin views are iframes whose documents declare no color-scheme. When an
+ * iframe's scheme differs from its embedding element's, browsers paint an
+ * opaque canvas under it (CSS Color Adjust spec) — with `dark` on body, every
+ * plugin page turned white with light text on it. `normal` on the iframe
+ * element matches the inner documents again, so they stay transparent and
+ * show the app behind them (verified in Chromium and WebKit). */
+iframe {
+  color-scheme: normal;
+}
+
+body.isDarkTheme {
+  color-scheme: dark;
+
+  --lgx-blue: #0a84ff;
+  --lgx-green: #30d158;
+  --lgx-red: #ff453a;
+  --lgx-orange: #ff9f0a;
+  --lgx-yellow: #ffd60a;
+  --lgx-gray: #8e8e93;
+
+  --lgx-label: #ffffff;
+  --lgx-label-2: rgba(235, 235, 245, 0.6);
+  --lgx-label-3: rgba(235, 235, 245, 0.3);
+  --lgx-fill: rgba(120, 120, 128, 0.36);
+  --lgx-fill-2: rgba(120, 120, 128, 0.32);
+  --lgx-separator: rgba(84, 84, 88, 0.6);
+  --lgx-grouped-bg: #000000;
+  --lgx-grouped-cell: #1c1c1e;
+
+  --lgx-glass-bg: rgba(40, 40, 46, 0.55);
+  --lgx-glass-lens: rgba(255, 255, 255, 0.12);
+  --lgx-glass-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -0.5px 0 rgba(0, 0, 0, 0.3),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.1),
+    0 8px 28px rgba(0, 0, 0, 0.45),
+    0 0 0 0.5px rgba(0, 0, 0, 0.5);
+  --lgx-glass-prominent-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.2),
+    0 6px 22px rgba(0, 0, 0, 0.4),
+    0 0 0 0.5px rgba(0, 0, 0, 0.5);
+}
+
+/* ---------------------------------------------------------
+ * Touch basics
+ * --------------------------------------------------------- */
+
+body.isTouchPrimary {
+  -webkit-tap-highlight-color: transparent;
+}
+
+body.isIOS {
+  -webkit-text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------------------------------------------------------
+ * Floating tab bar (iOS 26)
+ *
+ * Capsule inset from the screen edges, floating above the home
+ * indicator. The add-task FAB is pulled out of the capsule into a
+ * separate circular prominent-glass button on the trailing side —
+ * the iOS 26 "tab bar + accessory action" layout.
+ *
+ * The FAB is absolutely positioned against the nav (a fixed element,
+ * so it is the containing block); `right` on the nav leaves room for it.
+ * The FAB is anchored with `left` measured from the nav's fixed left
+ * edge, not `right`, so it stays put when the plugin shrinks the
+ * capsule (tab bar minimize on scroll).
+ * --------------------------------------------------------- */
+
+/* The app reserves `--bottom-nav-height + safe area + extra offset` below
+ * the content and stacks the multi-select bar, snackbars and the tour card
+ * on the same sum, so raising it to the capsule height keeps all of them
+ * clear of the floating bar. */
+body.hasMobileBottomNav {
+  --bottom-nav-height: var(--lgx-tabbar-h);
+}
+
+body.hasMobileBottomNav .mobile-bottom-nav {
+  --sidenav-item-active-bg: var(--lgx-glass-lens);
+  --sidenav-active-text: var(--lgx-tint);
+
+  left: calc(var(--safe-area-left) + var(--lgx-tabbar-inset)) !important;
+  right: calc(
+    var(--safe-area-right) + var(--lgx-tabbar-inset) + var(--lgx-tabbar-h) +
+      var(--lgx-tabbar-gap)
+  ) !important;
+  bottom: var(--lgx-tabbar-bottom) !important;
+  height: var(--lgx-tabbar-h) !important;
+  padding: 6px !important;
+  gap: 2px;
+  border-radius: 999px !important;
+  background: var(--lgx-tabbar-bg) !important;
+  backdrop-filter: blur(var(--lgx-glass-blur)) saturate(var(--lgx-glass-saturate));
+  -webkit-backdrop-filter: blur(var(--lgx-glass-blur))
+    saturate(var(--lgx-glass-saturate));
+  box-shadow: var(--lgx-glass-shadow) !important;
+  transition:
+    transform 0.45s var(--lgx-spring),
+    opacity 0.3s var(--lgx-ease);
+}
+
+body.hasMobileBottomNav .mobile-bottom-nav .nav-button {
+  height: 100% !important;
+  border-radius: 999px !important;
+  color: var(--lgx-label) !important;
+  transition:
+    background-color 0.25s var(--lgx-ease),
+    transform 0.4s var(--lgx-spring) !important;
+}
+
+body.hasMobileBottomNav .mobile-bottom-nav .nav-button mat-icon {
+  font-size: 26px !important;
+  width: 26px !important;
+  height: 26px !important;
+}
+
+body.hasMobileBottomNav .mobile-bottom-nav .nav-button:active {
+  transform: scale(1.08);
+}
+
+body.hasMobileBottomNav .mobile-bottom-nav .nav-button.active mat-icon {
+  color: var(--lgx-tint) !important;
+}
+
+body.hasMobileBottomNav .mobile-bottom-nav .add-task-button,
+body.hasMobileBottomNav .mobile-bottom-nav .add-task-button.smaller {
+  position: absolute !important;
+  top: 0;
+  right: auto;
+  left: calc(
+    100vw - var(--safe-area-left) - var(--safe-area-right) - 2 * var(--lgx-tabbar-inset) -
+      var(--lgx-tabbar-h)
+  );
+  flex: none !important;
+  width: var(--lgx-tabbar-h) !important;
+  height: var(--lgx-tabbar-h) !important;
+  margin: 0 !important;
+  border-radius: 50% !important;
+  color: #fff !important;
+  background-color: color-mix(in srgb, var(--lgx-tint) 86%, transparent) !important;
+  backdrop-filter: blur(var(--lgx-glass-blur)) saturate(var(--lgx-glass-saturate));
+  -webkit-backdrop-filter: blur(var(--lgx-glass-blur))
+    saturate(var(--lgx-glass-saturate));
+  box-shadow: var(--lgx-glass-prominent-shadow) !important;
+  transition: transform 0.45s var(--lgx-spring) !important;
+}
+
+body.hasMobileBottomNav .mobile-bottom-nav .add-task-button:active {
+  transform: scale(1.1) !important;
+}
+
+/* ---------------------------------------------------------
+ * Content scrolls UNDER the tab bar
+ *
+ * The app reserves the bar's height as padding-bottom on .main-content
+ * (narrow layout, < 600px). That leaves an empty strip, so the glass
+ * only ever sits on flat wallpaper and reads as an opaque slab. Move
+ * the reserve into the scroll containers instead: content then runs
+ * behind the capsule and the last item can still scroll clear of it.
+ * --------------------------------------------------------- */
+
+body {
+  --lgx-content-reserve: calc(
+    var(--bottom-nav-height) + var(--bottom-nav-safe-area) + var(--bottom-nav-extra-offset)
+  );
+}
+
+@media (max-width: 599.98px) {
+  body.hasMobileBottomNav .has-mobile-bottom-nav .main-content {
+    padding-bottom: 0 !important;
+  }
+
+  /* Routed pages are the scroll containers (app.component.scss). The task
+   * pages don't scroll themselves; their work-view lists do (below). */
+  body.hasMobileBottomNav
+    .route-wrapper
+    > :not(router-outlet):not(tag-task-page):not(project-task-page) {
+    box-sizing: border-box;
+    padding-bottom: var(--lgx-content-reserve) !important;
+  }
+
+  /* work-view keeps its own --s8 so the last task clears "Finish day". */
+  body.hasMobileBottomNav work-view .today {
+    padding-bottom: calc(var(--s8) + var(--lgx-content-reserve)) !important;
+  }
+
+  body.hasMobileBottomNav work-view .today:has(plugin-index) {
+    padding-bottom: var(--lgx-content-reserve) !important;
+  }
+}
+
+/* ---------------------------------------------------------
+ * Add-task bar → Liquid Glass compose card (all platforms)
+ *
+ * The global bar is pinned above the keyboard on touch. Upstream keeps
+ * it a solid 8px-radius block; here it becomes a floating glass card:
+ * large continuous radius, denser glass (it sits over the dimmed
+ * backdrop and holds typed text, so it stays well readable), a round
+ * prominent submit button and capsule action chips.
+ * --------------------------------------------------------- */
+
+/* The card is concentric with its round submit button: radius = button
+ * radius + the padding around it (40px button on desktop, 44px on touch). */
+body {
+  --lgx-compose-bg: rgba(255, 255, 255, 0.86);
+  --lgx-compose-btn: 40px;
+  --lgx-r-card: calc(var(--lgx-compose-btn) / 2 + var(--lgx-pad-card));
+  --lgx-compose-radius: var(--lgx-r-card);
+}
+
+body:is(.isTouchPrimary, .isTouchOnly) {
+  --lgx-compose-btn: 44px;
+}
+
+body.isDarkTheme {
+  --lgx-compose-bg: rgba(38, 38, 42, 0.82);
+}
+
+/* Inline add-task bars inside lists (all platforms): list-cell radius. */
+body add-task-bar:not(.global) .add-task-container {
+  border-radius: var(--lgx-radius-row) !important;
+}
+
+/* Global bar: touch pins it above the keyboard, desktop centres it near
+ * the top. Same card on both. `body add-task-bar.global …` (0,2,2) plus
+ * !important outranks upstream's solid `add-task-bar .add-task-container`. */
+@media (max-width: 599.98px) {
+  body:is(.isTouchPrimary, .isTouchOnly) add-task-bar.global {
+    left: calc(var(--safe-area-left) + 8px) !important;
+    right: calc(var(--safe-area-right) + 8px) !important;
+  }
+}
+
+body add-task-bar.global .add-task-container {
+  border: 0 !important;
+  border-radius: var(--lgx-compose-radius) !important;
+  background-color: var(--lgx-compose-bg) !important;
+  background-image: none !important;
+  backdrop-filter: blur(30px) saturate(var(--lgx-glass-saturate)) !important;
+  -webkit-backdrop-filter: blur(30px) saturate(var(--lgx-glass-saturate)) !important;
+  box-shadow: var(--lgx-glass-shadow) !important;
+}
+
+/* The chip row's scroll-fade is painted in --bg-lighter, which no longer
+ * matches the glass; drop it (the row still scrolls). */
+body add-task-bar.global add-task-bar-actions::after {
+  display: none !important;
+}
+
+body add-task-bar.global .input-section,
+body add-task-bar.global .main-input-wrap,
+body add-task-bar.global .main-input {
+  background: transparent !important;
+}
+
+body add-task-bar.global .input-section .main-input-wrap {
+  padding-left: 18px !important;
+}
+
+body add-task-bar.global .add-task-submit-btn {
+  --mat-icon-button-container-shape: 50%;
+  border-radius: 50% !important;
+  background-color: var(--lgx-tint) !important;
+  color: #fff !important;
+  box-shadow: var(--lgx-glass-prominent-shadow) !important;
+}
+
+body add-task-bar.global .switch-add-to-btn,
+body add-task-bar.global .inline-action-controls .mat-mdc-icon-button {
+  border-radius: 50% !important;
+}
+
+body add-task-bar.global .inline-action-controls {
+  border-right-color: var(--lgx-separator) !important;
+}
+
+body add-task-bar.global .action-bar {
+  gap: 4px;
+  padding: 4px 8px 8px !important;
+  border-top: 0.5px solid var(--lgx-separator) !important;
+}
+
+body add-task-bar.global .action-bar .action-btn {
+  min-height: 32px;
+  border-radius: 999px !important;
+  background-color: var(--lgx-fill-2) !important;
+}
+
+/* A chip with a value is a state, not an action: neutral fill and label
+ * colour; only its icon carries the tint. */
+body add-task-bar.global .action-bar .action-btn.has-value {
+  background-color: var(--lgx-fill) !important;
+  color: var(--lgx-label) !important;
+}
+
+body add-task-bar.global .action-bar .action-btn.has-value mat-icon {
+  color: var(--lgx-tint) !important;
+}
+
+/* Touch: a roomier compose card. iOS body text is 17pt; the input gets at
+ * least three lines so it reads as a writing surface, not a one-line
+ * field, and every control clears a comfortable touch target. The
+ * highlight overlay mirrors the textarea's typography, so both change
+ * together. cdkTextareaAutosize pins an inline px height; min-height
+ * still wins over it. */
+body:is(.isTouchPrimary, .isTouchOnly) add-task-bar.global .main-input,
+body:is(.isTouchPrimary, .isTouchOnly) add-task-bar.global .main-input-highlight {
+  font-size: 17px !important;
+  line-height: 1.42 !important;
+}
+
+body:is(.isTouchPrimary, .isTouchOnly) add-task-bar.global .main-input {
+  min-height: calc(17px * 1.42 * 3) !important;
+}
+
+body:is(.isTouchPrimary, .isTouchOnly) add-task-bar.global .input-section .main-input-wrap {
+  padding: 16px 10px 14px 20px !important;
+}
+
+body:is(.isTouchPrimary, .isTouchOnly) add-task-bar.global .separator-box {
+  padding: var(--lgx-pad-card) !important;
+}
+
+body:is(.isTouchPrimary, .isTouchOnly) add-task-bar.global .add-task-submit-btn {
+  width: var(--lgx-compose-btn) !important;
+  height: var(--lgx-compose-btn) !important;
+}
+
+body:is(.isTouchPrimary, .isTouchOnly) add-task-bar.global .inline-action-controls .mat-mdc-icon-button {
+  width: 40px !important;
+  height: 40px !important;
+}
+
+body:is(.isTouchPrimary, .isTouchOnly) add-task-bar.global .action-bar {
+  gap: 6px !important;
+  padding: 8px 10px 10px !important;
+}
+
+body:is(.isTouchPrimary, .isTouchOnly) add-task-bar.global .action-bar .action-btn {
+  min-height: 36px !important;
+  padding: 0 12px !important;
+  font-size: 14px !important;
+}
+
+/* Suggestions under the bar */
+body .mat-mdc-autocomplete-panel.add-task-bar-panel {
+  border-radius: var(--lgx-r-menu) !important;
+}
+
+/* ---------------------------------------------------------
+ * Header (iOS): transparent bar, actions in glass capsules
+ * --------------------------------------------------------- */
+
+body.isIOS main-header .header-wrapper,
+body.isIOS main-header .wrapper {
+  background: transparent !important;
+}
+
+/* Glass on the action groups. Not on .mobile-dropdown-wrapper: a
+ * backdrop-filter there would become the containing block of the
+ * dropdown it opens. */
+body.isIOS main-header .header-action-group:not(.mobile-dropdown-wrapper):not(:empty) {
+  border-radius: 999px;
+  padding: 2px;
+  background: var(--lgx-glass-bg);
+  backdrop-filter: blur(var(--lgx-glass-blur)) saturate(var(--lgx-glass-saturate));
+  -webkit-backdrop-filter: blur(var(--lgx-glass-blur))
+    saturate(var(--lgx-glass-saturate));
+  box-shadow: var(--lgx-glass-shadow);
+}
+
+body.isIOS main-header .page-title {
+  font-weight: 700 !important;
+  letter-spacing: -0.02em;
+}
+
+/* ---------------------------------------------------------
+ * Task rows (touch): rounder, iOS list-cell radius
+ * --------------------------------------------------------- */
+
+body.isTouchPrimary,
+body.isTouchPrimary.isDarkTheme {
+  --task-border-radius: var(--lgx-radius-row);
+}
+
+body.isTouchPrimary task .box {
+  border-radius: var(--lgx-radius-row);
+}
+
+/* Sub-tasks → one iOS inset-grouped block. Measured on the real app
+ * (20.0.0): with the base theme every sub-task box ends up a separate
+ * 16px-radius card with a 4px row gap, so neighbouring cards meet in
+ * pinched notches. Close the gaps, square every row, then round only the
+ * outer corners of the block; rows are divided by a hairline. All
+ * platforms. */
+body {
+  --lgx-radius-sub: var(--lgx-r-sub);
+}
+
+body task .sub-tasks {
+  --task-list-row-gap: 0px;
+}
+
+body task .sub-tasks .task-list-inner {
+  gap: 0 !important;
+  row-gap: 0 !important;
+}
+
+body task .sub-tasks task .box {
+  border-radius: 0 !important;
+  border-color: transparent !important;
+  border-top-color: color-mix(in srgb, var(--lgx-separator) 45%, transparent) !important;
+}
+
+body task .sub-tasks task:first-of-type .box {
+  border-top-color: transparent !important;
+}
+
+body task .sub-tasks task:first-of-type .box {
+  border-top-left-radius: var(--lgx-radius-sub) !important;
+  border-top-right-radius: var(--lgx-radius-sub) !important;
+}
+
+body task .sub-tasks task:last-of-type .box {
+  border-bottom-left-radius: var(--lgx-radius-sub) !important;
+  border-bottom-right-radius: var(--lgx-radius-sub) !important;
+}
+
+/* ---------------------------------------------------------
+ * Sheet (bottom panel): larger corners + iOS grabber
+ * --------------------------------------------------------- */
+
+/* iOS 26: a half-height sheet floats inset from the screen edges (content
+ * shows around it) with all four corners round; at full height it docks to
+ * the edges, squares its bottom corners and gets denser. The plugin marks
+ * the full state with .lgx-sheet-full (it can't be told apart in the DOM). */
+body.isIOS .bottom-panel-sheet .mat-bottom-sheet-container {
+  margin: 0 calc(var(--safe-area-right) + 8px) calc(var(--safe-area-bottom) + 8px)
+    calc(var(--safe-area-left) + 8px) !important;
+  border-radius: var(--lgx-r-sheet) !important;
+  padding-inline: calc(var(--lgx-r-sheet) - 8px - 16px) !important;
+  transition:
+    margin 0.35s var(--lgx-ease),
+    border-radius 0.35s var(--lgx-ease);
+}
+
+body.isIOS .bottom-panel-sheet .mat-bottom-sheet-container.lgx-sheet-full {
+  margin: 0 !important;
+  padding-inline: 0 !important;
+  border-radius: var(--lgx-r-sheet) var(--lgx-r-sheet) 0 0 !important;
+  background-color: color-mix(in srgb, var(--lgx-surface-solid) 92%, transparent) !important;
+}
+
+body.isIOS .bottom-panel-sheet .bottom-panel-header:active {
+  background-color: transparent !important;
+}
+
+body.isIOS .bottom-panel-sheet .drag-handle {
+  width: 36px !important;
+  height: 5px !important;
+  margin: 6px auto 0 !important;
+  border-radius: 999px !important;
+  background: var(--lgx-label-3) !important;
+  opacity: 1 !important;
+}
+
+/* ---------------------------------------------------------
+ * Dialogs, menus, snackbars (iOS)
+ * --------------------------------------------------------- */
+
+body {
+  --lgx-r-dialog-now: var(--lgx-r-dialog);
+}
+
+body:is(.isTouchPrimary, .isTouchOnly) {
+  --lgx-r-dialog-now: var(--lgx-r-alert);
+}
+
+body.isIOS .mat-mdc-dialog-actions .mat-mdc-button-base {
+  min-height: 44px;
+  padding-inline: 20px;
+  border-radius: 999px !important;
+}
+
+body.isIOS .mat-mdc-menu-panel,
+body.isIOS .mat-mdc-select-panel,
+body.isIOS .mat-mdc-autocomplete-panel {
+  border-radius: var(--lgx-radius-menu) !important;
+}
+
+body.isIOS .mat-mdc-menu-panel {
+  --mat-menu-item-label-text-size: 16px;
+}
+
+body.isIOS .mat-mdc-menu-item {
+  min-height: 44px;
+}
+
+/* Snackbars (all platforms): a floating glass notification. Material paints
+ * an opaque inverse-surface (white in dark mode) inside the container that
+ * upstream turns to glass, so the glass moves onto that inner surface and
+ * the container itself stays clear (one glass layer, not two). */
+body .mat-mdc-snack-bar-container {
+  --mat-snack-bar-container-shape: var(--lgx-r-menu);
+  --mat-snack-bar-container-color: transparent;
+  --mat-snack-bar-supporting-text-color: var(--lgx-label);
+  --mat-snack-bar-button-color: var(--lgx-tint);
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+  border-radius: var(--lgx-r-menu) !important;
+}
+
+body .mat-mdc-snack-bar-container .mat-mdc-snackbar-surface {
+  border-radius: var(--lgx-r-menu) !important;
+  background-color: var(--lgx-snack-bg) !important;
+  color: var(--lgx-label) !important;
+  backdrop-filter: blur(var(--lgx-chrome-blur)) saturate(190%) !important;
+  -webkit-backdrop-filter: blur(var(--lgx-chrome-blur)) saturate(190%) !important;
+  box-shadow: var(--lgx-glass-shadow) !important;
+}
+
+body .mat-mdc-snack-bar-container snack-custom,
+body .mat-mdc-snack-bar-container .mat-mdc-snack-bar-label {
+  color: var(--lgx-label) !important;
+}
+
+body {
+  --lgx-snack-bg: rgba(255, 255, 255, 0.62);
+}
+
+body.isDarkTheme {
+  --lgx-snack-bg: rgba(44, 44, 50, 0.62);
+}
+
+/* =========================================================
+ * 0.6 — chrome, panels, dialogs, fields (all platforms)
+ * ========================================================= */
+
+/* Specular edge ring: a 1px gradient border painted with mask-composite,
+ * bright at the top-left, fading through the sides, faint at the bottom —
+ * the lit rim that makes iOS 26 / Tahoe glass read as a thick lens. */
+body {
+  --lgx-ring: linear-gradient(
+    160deg,
+    rgba(255, 255, 255, 0.95) 0%,
+    rgba(255, 255, 255, 0.25) 35%,
+    rgba(255, 255, 255, 0.08) 65%,
+    rgba(255, 255, 255, 0.45) 100%
+  );
+  --lgx-chrome-bg: rgba(255, 255, 255, 0.42);
+  /* the tab bar's own fill: the plugin's glass presets and the
+   * accessibility blocks override this, not the shared --lgx-glass-bg */
+  --lgx-tabbar-bg: var(--lgx-chrome-bg);
+  --lgx-chrome-blur: 40px;
+  --lgx-surface-solid: #f7f8fb;
+  --lgx-dialog-bg: rgba(255, 255, 255, 0.84);
+  --lgx-menu-bg: rgba(255, 255, 255, 0.72);
+  --lgx-row-bg: rgba(255, 255, 255, 0.55);
+  --lgx-row-bg-hover: rgba(255, 255, 255, 0.72);
+  /* One accent: short-syntax highlight follows the accent / primary colour. */
+  --lgx-syntax: var(--lgx-tint);
+}
+
+body.isDarkTheme {
+  --lgx-ring: linear-gradient(
+    160deg,
+    rgba(255, 255, 255, 0.4) 0%,
+    rgba(255, 255, 255, 0.1) 35%,
+    rgba(255, 255, 255, 0.03) 65%,
+    rgba(255, 255, 255, 0.16) 100%
+  );
+  --lgx-chrome-bg: rgba(30, 30, 36, 0.48);
+  --lgx-tabbar-bg: var(--lgx-chrome-bg);
+  --lgx-surface-solid: #1f2026;
+  --lgx-dialog-bg: rgba(36, 37, 44, 0.86);
+  --lgx-menu-bg: rgba(40, 41, 48, 0.78);
+  --lgx-row-bg: rgba(60, 62, 72, 0.42);
+  --lgx-row-bg-hover: rgba(72, 74, 86, 0.55);
+}
+
+/* ---- Sidebar (desktop + mobile drawer): real glass panel ---- */
+magic-side-nav .nav-sidenav {
+  --sidenav-bg: var(--lgx-chrome-bg);
+  --sidenav-bg-mobile: var(--lgx-chrome-bg);
+  --sidenav-hover-bg: rgba(var(--ink-on-channel), 0.05);
+  --sidenav-item-active-bg: var(--lgx-glass-lens);
+  background: var(--lgx-chrome-bg) !important;
+  backdrop-filter: blur(var(--lgx-chrome-blur)) saturate(190%) !important;
+  -webkit-backdrop-filter: blur(var(--lgx-chrome-blur)) saturate(190%) !important;
+  border-radius: var(--lgx-r-panel) !important;
+  /* Lit rim as inset shadows: the panel is its own scroll container, and a
+   * positioned ::after ring would scroll away with the rows. */
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.3),
+    0 2px 8px rgba(0, 0, 0, 0.06),
+    0 18px 44px rgba(0, 0, 0, 0.12),
+    0 0 0 0.5px rgba(0, 0, 0, 0.06) !important;
+}
+
+body.isDarkTheme magic-side-nav .nav-sidenav {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 2px 8px rgba(0, 0, 0, 0.3),
+    0 18px 44px rgba(0, 0, 0, 0.45),
+    0 0 0 0.5px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Gradient ring for the (non-scrolling) tab bar capsule. */
+body.hasMobileBottomNav .mobile-bottom-nav::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  pointer-events: none;
+  background: var(--lgx-ring);
+  -webkit-mask:
+    linear-gradient(#000, #000) content-box,
+    linear-gradient(#000, #000);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000, #000) content-box,
+    linear-gradient(#000, #000);
+  mask-composite: exclude;
+  z-index: 3;
+}
+
+/* Rows: concentric with the panel. The selected row is a flat neutral fill
+ * (no rim, no shadow — a second lens on the glass panel would be glass on
+ * glass); only its icon carries the tint. */
+magic-side-nav .nav-link,
+magic-side-nav .nav-child-item,
+magic-side-nav button[mat-menu-item].nav-link {
+  border-radius: var(--lgx-r-nav-item) !important;
+}
+
+magic-side-nav .nav-link.active,
+magic-side-nav button[mat-menu-item].nav-link.active {
+  box-shadow: none !important;
+}
+
+magic-side-nav .nav-link.active .nav-icon,
+magic-side-nav .nav-link.active mat-icon {
+  color: var(--lgx-tint) !important;
+}
+
+/* ---- Wallpaper on its own compositor layer ----
+ * The base theme paints the wallpaper as `body { background: … fixed }`.
+ * With dozens of backdrop-filter surfaces above it, a fixed background —
+ * worse with a fine repeating pattern — gets re-rasterised on every style
+ * change, which can stall the whole window on macOS. A fixed, transformed
+ * pseudo-element is rasterised once and composited. */
+/* Solid base on <html>, transparent <body>: body's own background would
+ * otherwise paint above the z-index:-1 layer. */
+html {
+  background: #eef1f8;
+}
+
+html:has(> body.isDarkTheme) {
+  background: #0b0e18;
+}
+
+body {
+  background: transparent !important;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: var(--lg-wallpaper);
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+/* ---- macOS window chrome (Electron, hiddenInset traffic lights) ----
+ * The base theme drops the header's title-bar inset and pushes the
+ * floating sidebar down below a 32px band — the traffic lights then float
+ * above the panel and the page title rides up next to them. Restore the
+ * app's own header inset (title row lines up under the lights, as in the
+ * default theme) and let the floating sidebar start at the top so the
+ * lights sit inside the glass panel, the way macOS Tahoe sidebars do; the
+ * collapse toggle and the first row move below the lights. */
+/* One toolbar row, centred on the traffic lights. With hiddenInset AppKit
+ * centres the lights ~18px below the window top (measured on device), and
+ * CSS can't move them — so the row comes to them: the header becomes a
+ * 36px bar centred at 18px, header buttons shrink to 32px, and the
+ * sidebar's collapse toggle sits on the same line inside the panel. */
+/* Traffic lights measured on device (hiddenInset, Tahoe): centre ≈ (18px,
+ * 16px) from the window's top-left, ~12px dots. */
+/* v0.7.4: a row centred exactly on the lights left the header controls 0–2px
+ * from the window edge (and the 40px play FAB poked out above it). Tahoe
+ * toolbars keep clear space above their controls, so the toolbar row now
+ * starts --lgx-mac-header-top below the edge; the lights stay where AppKit
+ * puts them, a few px above the row's centre, as in native toolbars. */
+body {
+  --lgx-mac-lights-cy: 16px;
+  --lgx-mac-panel-inset: 4px;
+  --lgx-mac-header-top: 6px;
+  --lgx-mac-row-h: 36px;
+  /* centre line of the toolbar row, from the window top */
+  --lgx-mac-row-cy: calc(var(--lgx-mac-header-top) + var(--lgx-mac-row-h) / 2);
+}
+
+body.isMac.isElectron main-header {
+  --header-button-size: 32px;
+  padding-top: var(--lgx-mac-header-top) !important;
+}
+
+body.isMac.isElectron main-header .wrapper {
+  height: var(--lgx-mac-row-h) !important;
+  min-height: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+/* The play button is a 40px mini FAB with a progress ring around it; scale
+ * the whole wrapper to the 32px toolbar button size so it fits the row. */
+body.isMac.isElectron main-header play-button .play-btn-wrapper {
+  scale: 0.8;
+}
+
+/* A few header buttons (add, sync, notes) are plain 40px mat icon buttons
+ * that ignore --header-button-size; hold them to the toolbar size too. */
+body.isMac.isElectron main-header .mat-mdc-icon-button {
+  --mat-icon-button-state-layer-size: var(--header-button-size);
+  width: var(--header-button-size) !important;
+  height: var(--header-button-size) !important;
+  padding: calc((var(--header-button-size) - 24px) / 2) !important;
+}
+
+/* The floating panel hugs the window corner closely enough that the lights
+ * sit inside it with even padding (~6px top, ~8px left) and clear of the
+ * corner curve: an 8px inset with a 22px radius put them on the curve. */
+body.isMac.isElectron magic-side-nav {
+  --title-bar-drag-height: var(--lgx-mac-panel-inset);
+  --lgx-r-panel: calc(var(--lgx-r-window) - var(--lgx-mac-panel-inset));
+  --lgx-r-nav-item: calc(var(--lgx-r-panel) - var(--lgx-pad-panel));
+  --sidenav-panel-radius: var(--lgx-r-panel);
+  margin: 0 0 var(--lgx-mac-panel-inset) var(--lgx-mac-panel-inset) !important;
+  padding-top: var(--lgx-mac-panel-inset) !important;
+}
+
+body.isMac.isElectron magic-side-nav .nav-sidenav {
+  border-radius: var(--lgx-r-panel) !important;
+}
+
+/* 24px toggle on the toolbar row's centre line, inside the panel */
+body.isMac.isElectron magic-side-nav .mode-toggle {
+  top: calc(var(--lgx-mac-row-cy) - var(--lgx-mac-panel-inset) - 12px) !important;
+  width: 24px !important;
+  height: 24px !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 50% !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  z-index: 4;
+}
+
+body.isMac.isElectron magic-side-nav .mode-toggle:hover {
+  background: rgba(var(--ink-on-channel), 0.07) !important;
+}
+
+body.isMac.isElectron magic-side-nav .mode-toggle mat-icon {
+  font-size: 18px !important;
+  width: 18px !important;
+  height: 18px !important;
+  line-height: 18px !important;
+}
+
+/* first row starts under the toolbar row */
+body.isMac.isElectron magic-side-nav .nav-list {
+  padding-top: calc(var(--lgx-mac-header-top) + var(--lgx-mac-row-h)) !important;
+}
+
+/* Collapsed rail (56px, set by the component) is narrower than the three
+ * traffic lights (x 12–64), so it can't hold them. As macOS does with a
+ * collapsed sidebar, the rail starts below the lights' row: they sit in the
+ * title-bar band above it (which is also a window drag strip), and the
+ * expand toggle returns to the top of the rail. */
+body.isMac.isElectron magic-side-nav:has(> .nav-sidenav.compactMode),
+body.isMac.isElectron magic-side-nav:has(.nav-sidenav.compactMode) {
+  --title-bar-drag-height: calc(var(--lgx-mac-lights-cy) * 2);
+  padding-top: calc(var(--lgx-mac-lights-cy) * 2) !important;
+}
+
+body.isMac.isElectron magic-side-nav .nav-sidenav.compactMode .mode-toggle {
+  top: 8px !important;
+}
+
+body.isMac.isElectron magic-side-nav .nav-sidenav.compactMode .nav-list {
+  padding-top: 40px !important;
+}
+
+/* ---- Tab bar: clearer glass + lit lens for the selected tab ---- */
+body.hasMobileBottomNav .mobile-bottom-nav {
+  overflow: visible;
+}
+
+/* Selected tab at rest: a flat lens fill on the capsule, no shadow of its
+ * own (iOS 26 lifts it into a lens only while it is being touched). */
+body.hasMobileBottomNav .mobile-bottom-nav .nav-button.active {
+  box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.4) !important;
+}
+
+body.isDarkTheme.hasMobileBottomNav .mobile-bottom-nav .nav-button.active {
+  box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.12) !important;
+}
+
+/* ---- Add-task bar: chips wrap instead of a horizontal scroller ---- */
+body add-task-bar .action-bar {
+  flex-wrap: wrap !important;
+  row-gap: 4px !important;
+  overflow: visible !important;
+  padding-inline-end: 8px !important;
+}
+
+body add-task-bar add-task-bar-actions::after {
+  display: none !important;
+}
+
+body add-task-bar .action-bar .action-btn {
+  flex-shrink: 0;
+}
+
+/* Short-syntax highlight (p1, t10h, !at 3pm, #tag): configurable colour
+ * (--lgx-syntax; the plugin sets it, default = the app's accent). */
+body add-task-bar .main-input-highlight .syntax-highlight {
+  background: color-mix(in srgb, var(--lgx-syntax) 20%, transparent) !important;
+  border-radius: var(--lgx-r-inline) !important;
+  box-shadow: none !important;
+}
+
+/* ---- Right panel (task details): glass panel, inset-grouped rows ----
+ * The panel is the glass; its rows are content on it, so they are plain
+ * iOS grouped cells (no rim, no shadow — no glass on glass). Neighbouring
+ * rows form one block: no gaps, outer corners round, hairlines between. */
+right-panel .side {
+  background: var(--lgx-chrome-bg) !important;
+  backdrop-filter: blur(var(--lgx-chrome-blur)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--lgx-chrome-blur)) saturate(180%);
+  border-left: 0.5px solid rgba(var(--ink-on-channel), 0.08) !important;
+}
+
+task-detail-panel,
+task-detail-panel .wrapper {
+  background: transparent !important;
+}
+
+body {
+  --lgx-cell-bg: rgba(255, 255, 255, 0.78);
+  --lgx-cell-bg-hover: rgba(255, 255, 255, 0.94);
+}
+
+body.isDarkTheme {
+  --lgx-cell-bg: rgba(28, 28, 30, 0.72);
+  --lgx-cell-bg-hover: rgba(44, 44, 48, 0.85);
+}
+
+task-detail-item .input-item,
+task-detail-item .mat-expansion-panel {
+  margin: 0 10px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: var(--lgx-cell-bg) !important;
+  box-shadow: none !important;
+  transition: background-color 0.2s var(--lgx-ease);
+}
+
+task-detail-item + task-detail-item .input-item,
+task-detail-item + task-detail-item .mat-expansion-panel {
+  border-top: 0.5px solid var(--lgx-separator) !important;
+}
+
+task-detail-item:not(task-detail-item + task-detail-item) {
+  margin-top: 8px;
+}
+
+task-detail-item:not(task-detail-item + task-detail-item) :is(.input-item, .mat-expansion-panel) {
+  border-top-left-radius: var(--lgx-r-group) !important;
+  border-top-right-radius: var(--lgx-r-group) !important;
+}
+
+task-detail-item:not(:has(+ task-detail-item)) {
+  margin-bottom: 8px;
+}
+
+task-detail-item:not(:has(+ task-detail-item)) :is(.input-item, .mat-expansion-panel) {
+  border-bottom-left-radius: var(--lgx-r-group) !important;
+  border-bottom-right-radius: var(--lgx-r-group) !important;
+  overflow: hidden;
+}
+
+task-detail-item .input-item:hover,
+task-detail-item .mat-expansion-panel-header:hover {
+  background: var(--lgx-cell-bg-hover) !important;
+}
+
+task-detail-item .mat-expansion-panel-header {
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+
+task-detail-item:focus .input-item,
+task-detail-item:focus .mat-expansion-panel {
+  box-shadow: 0 0 0 2px var(--lgx-tint) !important;
+  position: relative;
+  z-index: 1;
+}
+
+/* ---- Dialogs & menus: readable glass ----
+ * Upstream Tier B (~0.36) assumes a live blur behind it. Content-heavy
+ * dialogs read through as soon as the blur is missing (refraction off-path,
+ * reduced effects) — iOS sheets/alerts are dense too. */
+body .mat-mdc-dialog-surface {
+  background-color: var(--lgx-dialog-bg) !important;
+  border-radius: var(--lgx-r-dialog-now) !important;
+  backdrop-filter: blur(40px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(40px) saturate(180%) !important;
+}
+
+body .mat-mdc-menu-panel,
+body .mat-mdc-select-panel,
+body .mat-mdc-autocomplete-panel {
+  background-color: var(--lgx-menu-bg) !important;
+}
+
+/* ---- Text fields: iOS filled style ---- */
+body .search-page .search-field .mdc-notched-outline,
+body .search-page .search-field .mdc-floating-label,
+body .search-page .search-field .mat-mdc-form-field-subscript-wrapper {
+  display: none !important;
+}
+
+body .search-page .search-field .mdc-text-field {
+  height: 44px;
+  padding-inline: 14px 14px !important;
+  border-radius: var(--lgx-r-field) !important;
+  background: rgba(118, 118, 128, 0.12) !important;
+  transition:
+    background-color 0.2s var(--lgx-ease),
+    box-shadow 0.2s var(--lgx-ease);
+}
+
+body.isDarkTheme .search-page .search-field .mdc-text-field {
+  background: rgba(118, 118, 128, 0.24) !important;
+}
+
+body .search-page .search-field .mdc-text-field--focused {
+  background: var(--lgx-row-bg-hover) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--lgx-tint) 35%, transparent);
+}
+
+body .search-page .search-field .mat-mdc-form-field-infix {
+  padding-block: 11px !important;
+  min-height: 0 !important;
+}
+
+body .search-page .search-field input {
+  font-size: 16px;
+}
+
+/* ---------------------------------------------------------
+ * Switches (iOS): system green track, white knob, no icons.
+ *
+ * Colours only. Resizing to the iOS 51x31 geometry needs the
+ * handle-margin tokens of the shipped Angular Material version and
+ * is deferred until it is checked on device (docs/design-spec.md).
+ * --------------------------------------------------------- */
+
+body.isIOS {
+  --mat-switch-selected-track-color: var(--lgx-green);
+  --mat-switch-selected-hover-track-color: var(--lgx-green);
+  --mat-switch-selected-focus-track-color: var(--lgx-green);
+  --mat-switch-selected-pressed-track-color: var(--lgx-green);
+  --mat-switch-unselected-track-color: var(--lgx-fill);
+  --mat-switch-unselected-hover-track-color: var(--lgx-fill);
+  --mat-switch-unselected-focus-track-color: var(--lgx-fill);
+  --mat-switch-unselected-pressed-track-color: var(--lgx-fill);
+  --mat-switch-track-outline-color: transparent;
+  --mat-switch-selected-handle-color: #ffffff;
+  --mat-switch-selected-hover-handle-color: #ffffff;
+  --mat-switch-selected-focus-handle-color: #ffffff;
+  --mat-switch-selected-pressed-handle-color: #ffffff;
+  --mat-switch-unselected-handle-color: #ffffff;
+  --mat-switch-unselected-hover-handle-color: #ffffff;
+  --mat-switch-unselected-focus-handle-color: #ffffff;
+  --mat-switch-unselected-pressed-handle-color: #ffffff;
+  --mat-switch-selected-icon-color: transparent;
+  --mat-switch-unselected-icon-color: transparent;
+  --mat-switch-handle-elevation-shadow:
+    0 3px 8px rgba(0, 0, 0, 0.15), 0 3px 1px rgba(0, 0, 0, 0.06);
+}
+
+/* ---------------------------------------------------------
+ * Accessibility
+ * --------------------------------------------------------- */
+
+/* Reduce Transparency: upstream removes every blur. A translucent surface
+ * without its blur reads worse than either, so every background token of
+ * this layer goes solid here (keep this list in sync with design-spec §5),
+ * and the rims that only make sense on glass go away. */
+@media (prefers-reduced-transparency: reduce) {
+  body {
+    --lgx-glass-bg: #f9f9f9;
+    --lgx-chrome-bg: #f5f7fa;
+    --lgx-tabbar-bg: #f9f9f9;
+    --lgx-compose-bg: #ffffff;
+    --lgx-dialog-bg: #ffffff;
+    --lgx-menu-bg: #ffffff;
+    --lgx-row-bg: #ffffff;
+    --lgx-row-bg-hover: #f0f3f7;
+    --lgx-cell-bg: #ffffff;
+    --lgx-cell-bg-hover: #f0f3f7;
+    --lgx-snack-bg: #ffffff;
+    --lgx-glass-lens: rgba(0, 0, 0, 0.08);
+  }
+  body.isDarkTheme {
+    --lgx-glass-bg: #2c2c2e;
+    --lgx-chrome-bg: #181b23;
+    --lgx-tabbar-bg: #2c2c2e;
+    --lgx-compose-bg: #2c2c2e;
+    --lgx-dialog-bg: #2c2c2e;
+    --lgx-menu-bg: #2c2c2e;
+    --lgx-row-bg: #1c1c1e;
+    --lgx-row-bg-hover: #2c2c2e;
+    --lgx-cell-bg: #1c1c1e;
+    --lgx-cell-bg-hover: #2c2c2e;
+    --lgx-snack-bg: #2c2c2e;
+    --lgx-glass-lens: rgba(255, 255, 255, 0.14);
+  }
+  body.hasMobileBottomNav .mobile-bottom-nav::after {
+    display: none !important;
+  }
+  body.hasMobileBottomNav .mobile-bottom-nav .add-task-button {
+    background-color: var(--lgx-tint) !important;
+  }
+  body magic-side-nav .nav-sidenav,
+  body.isDarkTheme magic-side-nav .nav-sidenav {
+    box-shadow:
+      0 2px 8px rgba(0, 0, 0, 0.08),
+      0 0 0 0.5px var(--lgx-separator) !important;
+  }
+  body.isIOS .bottom-panel-sheet .mat-bottom-sheet-container {
+    background-color: var(--lgx-surface-solid) !important;
+  }
+}
+
+/* Increase Contrast: an outline on every glass surface, stronger secondary
+ * labels and hairlines, denser glass. The accent switches to its
+ * high-contrast variant in the plugin (accent.ts). */
+@media (prefers-contrast: more) {
+  body {
+    --lgx-label-2: rgba(60, 60, 67, 0.8);
+    --lgx-separator: #c6c6c8;
+    --lgx-glass-bg: rgba(255, 255, 255, 0.77);
+    --lgx-chrome-bg: rgba(255, 255, 255, 0.67);
+    --lgx-tabbar-bg: rgba(255, 255, 255, 0.77);
+    --lgx-menu-bg: rgba(255, 255, 255, 0.97);
+    --lgx-dialog-bg: #ffffff;
+    --lgx-compose-bg: #ffffff;
+    --lgx-cell-bg: #ffffff;
+    --lgx-snack-bg: rgba(255, 255, 255, 0.92);
+  }
+  body.isDarkTheme {
+    --lgx-label-2: rgba(235, 235, 245, 0.8);
+    --lgx-separator: #38383a;
+    --lgx-glass-bg: rgba(40, 40, 46, 0.8);
+    --lgx-chrome-bg: rgba(30, 30, 36, 0.73);
+    --lgx-tabbar-bg: rgba(40, 40, 46, 0.8);
+    --lgx-menu-bg: rgba(40, 41, 48, 0.97);
+    --lgx-dialog-bg: #2c2c2e;
+    --lgx-compose-bg: #2c2c2e;
+    --lgx-cell-bg: #1c1c1e;
+    --lgx-snack-bg: rgba(44, 44, 50, 0.92);
+  }
+  body.hasMobileBottomNav .mobile-bottom-nav,
+  body.hasMobileBottomNav .mobile-bottom-nav .add-task-button,
+  body.isIOS main-header .header-action-group:not(.mobile-dropdown-wrapper):not(:empty),
+  body magic-side-nav .nav-sidenav,
+  body right-panel .side,
+  body add-task-bar.global .add-task-container,
+  body .mat-mdc-dialog-surface,
+  body .mat-mdc-menu-panel,
+  body .mat-mdc-select-panel,
+  body .mat-mdc-autocomplete-panel,
+  body.isIOS .bottom-panel-sheet .mat-bottom-sheet-container,
+  body .mat-mdc-snack-bar-container .mat-mdc-snackbar-surface {
+    outline: 1px solid var(--lgx-label-2) !important;
+    outline-offset: -1px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.hasMobileBottomNav .mobile-bottom-nav,
+  body.hasMobileBottomNav .mobile-bottom-nav .nav-button,
+  body.hasMobileBottomNav .mobile-bottom-nav .add-task-button {
+    transition: none !important;
+  }
+  body.hasMobileBottomNav .mobile-bottom-nav .nav-button:active,
+  body.hasMobileBottomNav .mobile-bottom-nav .add-task-button:active {
+    transform: none !important;
+  }
+}
+
+body.isDisableAnimations .mobile-bottom-nav,
+body.isDisableAnimations .mobile-bottom-nav .nav-button,
+body.isDisableAnimations .mobile-bottom-nav .add-task-button {
+  transition: none !important;
+}

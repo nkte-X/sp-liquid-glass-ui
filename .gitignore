@@ -1,0 +1,8 @@
+node_modules/
+plugin/dist/
+*.zip
+.DS_Store
+# personal screenshots used during development
+shots/
+# old unrelated experiment, kept locally
+themes/macos-liquid-glass.css

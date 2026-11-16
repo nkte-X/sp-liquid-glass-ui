@@ -1,0 +1,19 @@
+{
+  "id": "liquid-glass-ui",
+  "name": "Liquid Glass UI",
+  "version": "1.0.0",
+  "manifestVersion": 1,
+  "minSupVersion": "20.0.0",
+  "description": "A Liquid Glass look for Super Productivity in light and dark mode, on Mac, iPhone and the rest: bundled theme, wallpapers, accent colour, floating tab bar, scroll edge effect, glass notifications. Install only this plugin.",
+  "author": "nkte-X",
+  "permissions": [],
+  "hooks": [
+    "workContextChange",
+    "persistedDataChanged"
+  ],
+  "dataSharing": [],
+  "iFrame": true,
+  "sidePanel": false,
+  "isSkipMenuEntry": false,
+  "icon": "icon.svg"
+}
