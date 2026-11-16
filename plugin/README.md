@@ -1,63 +1,92 @@
-# Liquid Glass UI — заметки для разработки
+# Liquid Glass UI — developer notes
 
-iOS 26 Liquid Glass для Super Productivity одним плагином. Тема `themes/ios-liquid-glass.css` встраивается в `plugin.js` при сборке, и плагин сам вставляет её в приложение. Отдельно ставить тему не нужно. Один ZIP ставится на любой платформе, функции включаются сами в зависимости от платформы.
+The whole Liquid Glass look for Super Productivity as one plugin. The theme
+`themes/ios-liquid-glass.css` is embedded into `plugin.js` at build time and
+the plugin injects it into the app, so no separate theme install is needed.
+One ZIP works on every platform; features switch themselves on or off
+depending on the platform.
 
-| Функция | По умолчанию | Где работает |
+| Feature | Default | Where |
 |---|---|---|
-| Встроенная тема iOS Liquid Glass | вкл | везде |
-| Обои Theme / Aurora / Ocean / Sunset / Graphite (стеклу нужен цвет за ним) | Theme | везде |
-| Свои обои: редактор с базовым градиентом для светлой и тёмной темы, цветными пятнами и узором (точки, сетка, линии), живое превью; до 8 дизайнов | — | везде |
-| Акцентный цвет: главные действия («добавить», отправка, Play — и во время учёта времени), иконка выбранного таба / пункта сайдбара, кольцо фокуса и подсветка короткого синтаксиса (p1, t10h, !at 3pm, #tag). Пара светлый / тёмный: системные цвета — значения Apple, для своего тёмный вариант выводится сам или задаётся вручную; при Increase Contrast — high-contrast вариант | цвет приложения | везде |
-| Непрозрачная подложка и стеклянный `<dialog>` в iframe других плагинов | вкл | везде |
-| Сворачивание tab bar при скролле вниз (как в iOS 26) | вкл | везде, где есть мобильный tab bar |
-| Свечение под пальцем на стеклянных контролах | вкл | везде |
-| Хаптика: табы, «добавить», выполнение задачи | вкл | Android (мост приложения), iOS (экспериментально, через `<input switch>`) |
-| Dynamic Type: масштаб шрифтов по настройке iOS | выкл | iOS |
-| Пресеты стекла Clear / Regular / Tinted | Regular | везде (не при Reduce Transparency) |
-| Мягкий край при прокрутке Off / Soft / Hard (аналог `scrollEdgeEffectStyle`): то, что уходит под верх сайдбара и страницы, затухает; при плавающем tab bar — и снизу, пока ниже есть контент | Soft | везде |
-| Состояние sheet: на полной высоте он прилегает к краям (`lgx-sheet-full`) | вкл | iOS |
-| Диагностика: классы `body`, селекторы, safe area, Dynamic Type, Reduce Transparency / Motion / Increase Contrast (актуальные, без перезапуска) | — | экран настроек |
+| Bundled Liquid Glass theme | on | everywhere |
+| Wallpapers Theme / Aurora / Ocean / Sunset / Graphite (glass needs colour behind it) | Theme | everywhere |
+| Custom wallpapers: editor with a base gradient for light and dark mode, colour blobs and a pattern (dots, grid, lines), live preview; up to 8 designs | — | everywhere |
+| Accent colour: primary actions (add, send, play — also while tracking time), selected tab / sidebar icon, focus ring and the short-syntax highlight (p1, t10h, !at 3pm, #tag). Light / dark pair: system colours use Apple's values, a custom colour gets a derived dark variant or a manual one; high-contrast variant with Increase Contrast | app colour | everywhere |
+| Opaque surface and a glass `<dialog>` inside other plugins' iframes | on | everywhere |
+| Tab bar minimizes while scrolling down (like iOS 26) | on | wherever the mobile tab bar is shown |
+| Press glow under the finger on glass controls | on | everywhere |
+| Haptics: tabs, add, task done | on | Android (app bridge), iOS (experimental, via `<input switch>`) |
+| Dynamic Type: font scale follows the iOS setting | off | iOS |
+| Glass presets Clear / Regular / Tinted | Regular | everywhere (not with Reduce Transparency) |
+| Scroll edge effect Off / Soft / Hard (like `scrollEdgeEffectStyle`): content fades under the top of the sidebar and the page; with the floating tab bar also at the bottom while more content follows | Soft | everywhere |
+| Sheet state: at full height the sheet docks to the screen edges (`lgx-sheet-full`) | on | iOS |
+| Diagnostics: `body` classes, selectors, safe area, Dynamic Type, Reduce Transparency / Motion / Increase Contrast (live, no restart) | — | settings page |
 
-## Установка
-1. `npm install && npm run package` — получится `liquid-glass-ui-<версия>.zip`. Сборка сначала собирает тему (`../themes/build.sh`).
-2. В приложении: Settings → Plugins → загрузить ZIP и включить плагин.
-3. Settings → Theme: выбрать **Default**. Если там уже стоит установленная iOS Liquid Glass, тема загрузится дважды. Это безвредно, но лишнее; диагностика покажет `themeSource: both`.
-4. Настройки и диагностика: пункт меню **Liquid Glass UI**.
+## Install
 
-При запуске приложения тема появляется, когда загрузится плагин, поэтому возможна короткая вспышка стандартного вида. Если она мешает, можно дополнительно поставить тему через Settings → Theme.
+1. `npm install && npm run package` produces `liquid-glass-ui-<version>.zip`.
+   The build compiles the theme first (`../themes/build.sh`).
+2. In the app: Settings → Plugins → upload the ZIP and enable the plugin.
+3. Settings → Theme: choose **Default**. If the standalone theme is also
+   installed there, it loads twice: harmless but redundant; diagnostics then
+   shows `themeSource: both`.
+4. Settings and diagnostics: the **Liquid Glass UI** menu entry.
 
-## Разработка
+On app start the theme appears once the plugin has loaded, so the default
+look may flash briefly. If that bothers you, also install the theme file via
+Settings → Theme.
+
+## Development
+
 ```
-npm run build      # vite → dist/ и проверка, что plugin.js компилируется как плагин приложения
+npm run build      # vite → dist/, then checks that plugin.js compiles as a host plugin
 npm run typecheck
-npm run smoke      # превью + plugin.js с мок-версией PluginAPI в WebKit (iPhone 15 Pro), 87 проверок
+npm run smoke      # preview page + plugin.js with a mock PluginAPI in WebKit (iPhone 15 Pro), 87 checks
 npm run package    # ZIP: manifest.json, plugin.js, index.html, icon.svg
+npm run release    # smoke + package, prints the SHA-256 and the community listing entry
 ```
 
-Структура:
+Layout:
+
 ```
-src/plugin.ts          точка входа в приложении (new Function): настройки, слоты функций, onUnload
-src/host/*.ts          функции: tab-bar, press-glow, haptics, dynamic-type, accent, wallpaper-css, plugin-iframes, diagnostics
-src/host/env.ts        ВСЕ DOM-селекторы приложения (после обновления приложения правится один файл)
-src/host/style.ts      CSS состояний плагина (body.lgx-on + классы функций, обои, материалы карточек)
-src/host/bundled-theme.ts  встроенная тема (themes/ios-liquid-glass.css?raw)
-src/protocol.ts        только типы, общие для plugin.js и UI
-src/app/               экран настроек на Solid (iframe), общается с plugin.js через PLUGIN_MESSAGE
-tools/sp-vite-plugin.ts  копия upstream packages/vite-plugin (MIT, в npm нет)
+src/plugin.ts              host entry (run via new Function): settings, feature slots, onUnload
+src/host/*.ts              features: tab-bar, press-glow, haptics, dynamic-type, accent, wallpaper-css,
+                           plugin-iframes, scroll-edge, sheet, diagnostics
+src/host/env.ts            ALL app DOM selectors (an app update that renames something is a one-file fix)
+src/host/style.ts          CSS for plugin-driven states (body.lgx-on + feature classes, wallpapers)
+src/host/bundled-theme.ts  bundled theme (themes/ios-liquid-glass.css?raw)
+src/protocol.ts            types only, shared by plugin.js and the UI
+src/app/                   settings page (Solid, iframe), talks to plugin.js via PLUGIN_MESSAGE
+tools/sp-vite-plugin.ts    copy of upstream packages/vite-plugin (MIT, not on npm)
 ```
 
-Правила:
-- `plugin.js` должен оставаться обычным скриптом. В `src/plugin.ts` и `src/host/**` нельзя импортировать runtime-код из `src/app/**`, а из `src/protocol.ts` — только через `import type`. `npm run build` упадёт, если это нарушено.
-- Если селектор не найден или API недоступен, функция тихо выключается. Ошибка одной функции не останавливает остальные.
-- `onUnload` снимает всё: обработчики, observer, `<style>`, SVG, классы и inline-переменные.
-- Хаптика вызывается только из жеста пользователя. Хуки и синхронизация её не вызывают.
+Rules:
 
-## Ограничения
-- Хаптику на iOS программно не проверить: включи её и скажи, чувствуется ли отклик.
-- Настройки синхронизируются между устройствами. Платформенные функции на неподходящих устройствах просто не запускаются.
-- Используется DOM приложения, а не официальный API. После обновлений приложения сначала смотри раздел «Диагностика».
+- `plugin.js` must stay a plain script. `src/plugin.ts` and `src/host/**`
+  must not import runtime code from `src/app/**`, and may use only
+  `import type` from `src/protocol.ts`. `npm run build` fails otherwise.
+- If a selector is missing or an API is unavailable, the feature switches
+  itself off quietly. One failing feature never stops the others.
+- `onUnload` removes everything: listeners, observers, `<style>`, SVG,
+  classes and inline variables.
+- Haptics fire only from a user gesture, never from hooks or sync.
 
-## Удалено
-- **Настройка Task cards (1.0.0).** Карточки задач всегда сплошные: строки — контент, не стекло. Старый ключ `taskCards` игнорируется.
-- **Карточки Frosted (0.7.0).** Живое размытие на каждой строке списка — стекло в контенте, против HIG, и нагрузка на длинных списках. Glass переименован в **Translucent** и стал мягким: только полупрозрачная заливка. Сохранённые `glass` и `frosted` читаются как `translucent`.
-- **Преломление (SVG-линза).** Проверено на настоящем приложении: в Chromium `backdrop-filter: url(#svg) blur()` сохраняется в стилях, но фон не размывается вообще, и диалоги становятся просто полупрозрачными. Старый ключ `refraction` в синхронизированных настройках игнорируется.
+## Limitations
+
+- iOS haptics can't be verified programmatically: turn them on and check
+  whether you feel them.
+- Settings sync across devices. Platform features simply don't start on
+  devices that can't use them.
+- The plugin relies on the app's DOM, not an official API. After an app
+  update, check the Diagnostics section first.
+
+## Removed
+
+- **Task cards setting (1.0.0).** Task cards are always solid: rows are
+  content, not glass. The old `taskCards` key is ignored.
+- **Frosted task cards (0.7.0).** A live blur on every list row is glass in
+  content (against the HIG) and costly on long lists.
+- **Refraction (SVG lens).** Tested on the real app: in Chromium
+  `backdrop-filter: url(#svg) blur()` stays in the computed style but the
+  background is not blurred at all, so dialogs end up merely translucent. The
+  old `refraction` key in synced settings is ignored.
