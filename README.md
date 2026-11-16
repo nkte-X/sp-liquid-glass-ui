@@ -7,10 +7,6 @@ on Mac, iPhone, iPad, Android, Windows, Linux and the web app.
 It is **one plugin**: the theme is bundled inside, so there is nothing else to
 install. Everything is set from the plugin's own settings page.
 
-| iPhone, light | iPhone, dark | Add task |
-|---|---|---|
-| ![](docs/screenshots/iphone-light.png) | ![](docs/screenshots/iphone-dark.png) | ![](docs/screenshots/iphone-compose.png) |
-
 ## Features
 
 - **Glass where Apple puts it:** sidebar, header controls, floating tab bar,
