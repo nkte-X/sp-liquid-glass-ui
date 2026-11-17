@@ -1,8 +1,7 @@
 # Notices
 
-Liquid Glass UI is licensed under the PolyForm Noncommercial License 1.0.0
-(see `LICENSE`), except for the third-party material below, which keeps its
-own license.
+Liquid Glass UI is licensed under the MIT License (see `LICENSE`), except for
+the third-party material below, which keeps its own license and copyright.
 
 ## Super Productivity theme (MIT)
 

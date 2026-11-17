@@ -2,7 +2,7 @@
 // against a mock PluginAPI. Screenshots: $SHOTS_DIR or /tmp/liquid-glass-shots.
 // Note: headless WebKit does not render backdrop-filter, so screenshots show
 // no blur; geometry and behaviour checks are what this test is for.
-import { webkit, devices } from 'playwright';
+import { webkit, chromium, devices } from 'playwright';
 import fs from 'node:fs';
 
 const PROJECT = new URL('../..', import.meta.url).pathname.replace(/\/$/, '');
@@ -494,7 +494,140 @@ for (const [label, qs, ctxOpts] of [
   await c.close();
 }
 
+// --- Plugin iframes: override only with the Liquid Glass theme active ------
+const addIframe = (page, id, html) =>
+  page.evaluate(
+    ([id, html]) =>
+      new Promise((res) => {
+        const f = document.createElement('iframe');
+        f.id = id;
+        f.onload = () => res();
+        f.srcdoc = html;
+        document.body.appendChild(f);
+      }),
+    [id, html],
+  );
+const PLUGIN_FRAME =
+  '<!doctype html><html><head><style id="injected-theme-vars">:root{--card-bg:#123456}</style></head>' +
+  '<body><dialog open>hi</dialog></body></html>';
+const LONG_FRAME = '<!doctype html><html><body><div style="height:3000px"></div></body></html>';
+{
+  const page = await ctx.newPage();
+  page.on('pageerror', (e) => check('no page errors (iframes)', false, e.message));
+  await page.goto(PREVIEW + '?notheme=1');
+  await bootPlugin(page);
+  await addIframe(page, 'plug', PLUGIN_FRAME);
+  await page.waitForTimeout(100);
+  const frame = () =>
+    page.evaluate(() => {
+      const doc = document.getElementById('plug').contentDocument;
+      return {
+        patched: !!doc.getElementById('lgx-iframe-surface'),
+        cardBg: getComputedStyle(doc.documentElement).getPropertyValue('--card-bg').trim(),
+      };
+    });
+  let f = await frame();
+  check('bundled theme on: plugin iframe gets the glass surface override', f.patched, JSON.stringify(f));
+  await page.evaluate(() => window.__lgx.onMessage({ type: 'setSettings', payload: { bundledTheme: false } }));
+  f = await frame();
+  check(
+    'bundled theme off: plugin iframe keeps its own theme tokens',
+    !f.patched && f.cardBg === '#123456',
+    JSON.stringify(f),
+  );
+  await addIframe(page, 'plug2', PLUGIN_FRAME);
+  await page.waitForTimeout(100);
+  check(
+    'bundled theme off: newly opened plugin iframe is not patched',
+    await page.evaluate(() => !document.getElementById('plug2').contentDocument.getElementById('lgx-iframe-surface')),
+  );
+  await page.evaluate(() => window.__lgx.onMessage({ type: 'setSettings', payload: { bundledTheme: true } }));
+  check('bundled theme back on: override restored', (await frame()).patched);
+
+  // a navigation click right before the scroll edge slot stops must not
+  // hook iframes into the stopped slot
+  await page.evaluate(() => document.body.click());
+  await page.evaluate(() => window.__lgx.onMessage({ type: 'setSettings', payload: { scrollEdge: 'off' } }));
+  await addIframe(page, 'late', LONG_FRAME);
+  await page.waitForTimeout(600);
+  await page.evaluate(() => document.getElementById('late').contentWindow.scrollTo(0, 200));
+  await page.waitForTimeout(200);
+  check(
+    'scroll edge off: a pending click timer does not re-hook iframes',
+    await page.evaluate(() => !document.getElementById('late').classList.contains('lgx-edge-fade')),
+  );
+  await page.close();
+}
+
 await browser.close();
+
+// --- Memory: no detached DOM kept alive (Chromium, forced GC) --------------
+{
+  let cb = null;
+  try {
+    cb = await chromium.launch({ args: ['--js-flags=--expose-gc'] });
+  } catch (e) {
+    console.log(`- skipped GC checks: Chromium not available (npx playwright install chromium)`);
+  }
+  if (cb) {
+    const page = await cb.newPage({ viewport: { width: 393, height: 852 } });
+    page.on('pageerror', (e) => check('no page errors (gc)', false, e.message));
+    await page.goto(PREVIEW);
+    await bootPlugin(page);
+    const collected = async (expr) => {
+      for (let i = 0; i < 6; i++) {
+        await page.evaluate(() => window.gc());
+        await page.waitForTimeout(50);
+      }
+      return page.evaluate(expr);
+    };
+
+    // a routed page scroller that got the fade, then removed by navigation
+    await page.evaluate(() => {
+      const s = document.createElement('div');
+      s.id = 'leak-s';
+      Object.assign(s.style, { position: 'absolute', inset: '0', overflowY: 'auto' });
+      s.innerHTML = '<div style="height:3000px"></div>';
+      document.querySelector('.route-wrapper').appendChild(s);
+      s.scrollTop = 100;
+    });
+    await page.waitForTimeout(200);
+    check(
+      'gc: test scroller got the edge fade',
+      await page.evaluate(() => document.getElementById('leak-s').classList.contains('lgx-edge-fade')),
+    );
+    await page.evaluate(() => {
+      const s = document.getElementById('leak-s');
+      window.__sref = new WeakRef(s);
+      s.remove();
+    });
+    await page.waitForTimeout(100);
+    check('gc: removed page scroller is collected', await collected(() => window.__sref.deref() === undefined));
+
+    // a plugin view iframe that was scrolled, then closed
+    await addIframe(page, 'leak-f', LONG_FRAME);
+    await page.waitForTimeout(100);
+    await page.evaluate(() => document.getElementById('leak-f').contentWindow.scrollTo(0, 200));
+    await page.waitForTimeout(200);
+    check(
+      'gc: test iframe got the edge fade',
+      await page.evaluate(() => document.getElementById('leak-f').classList.contains('lgx-edge-fade')),
+    );
+    await page.evaluate(() => {
+      const f = document.getElementById('leak-f');
+      window.__wref = new WeakRef(f.contentWindow);
+      window.__fref = new WeakRef(f);
+      f.remove();
+    });
+    await page.waitForTimeout(100);
+    check(
+      'gc: closed plugin iframe and its window are collected',
+      await collected(() => window.__fref.deref() === undefined && window.__wref.deref() === undefined),
+    );
+    await cb.close();
+  }
+}
+
 const failed = results.filter((r) => !r.ok);
 console.log(`\n${results.length - failed.length}/${results.length} passed`);
 process.exit(failed.length ? 1 : 0);

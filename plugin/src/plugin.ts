@@ -11,7 +11,7 @@
 import type { PluginAPI } from '@super-productivity/plugin-api';
 import type { LgxMessage, LgxSettings, LgxState } from './protocol';
 import { accentVariants, startAccent } from './host/accent';
-import { startBundledTheme } from './host/bundled-theme';
+import { isInstalledThemeOurs, startBundledTheme } from './host/bundled-theme';
 import { startComposeProbe } from './host/compose-probe';
 import { collectDiagnostics } from './host/diagnostics';
 import { Disposer, FeatureSlot } from './host/disposer';
@@ -146,7 +146,9 @@ const apply = (next: LgxSettings): void => {
   runSlot('accent', !!next.accent, (d) => startAccent(d, next.accent, next.accentDark));
   const custom = activeCustomWallpaper();
   runSlot('wallpaper', !!custom, (d) => startCustomWallpaper(d, custom!));
-  runSlot('iframes', true, startPluginIframes);
+  // Other plugins' iframes are only adjusted for our own theme; with any
+  // other theme they keep the tokens the app injects.
+  runSlot('iframes', next.bundledTheme || isInstalledThemeOurs(), startPluginIframes);
   runSlot('scrollEdge', next.scrollEdge !== 'off', startScrollEdge);
   runSlot('sheet', true, startSheetState);
   runSlot('tabBar', next.tabBarMinimize, (d) => {

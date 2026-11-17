@@ -22,7 +22,7 @@ fi
  *   Copyright (c) 2018 Johannes Millan, MIT License (see NOTICE.md).
  * Part 2: the Liquid Glass UI layer (floating tab bar, glass chrome, sheets,
  *   iOS palette), Copyright (c) 2026 nkte-X,
- *   PolyForm Noncommercial License 1.0.0 (see LICENSE).
+ *   MIT License (see LICENSE).
  *
  * Install: Settings → Theme → Install theme → pick this file — or install
  * the Liquid Glass UI plugin, which bundles it.

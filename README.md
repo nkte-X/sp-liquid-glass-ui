@@ -78,9 +78,8 @@ Layout:
 
 ## License
 
-[PolyForm Noncommercial 1.0.0](LICENSE): free to use, change and share for
-any **noncommercial** purpose. Commercial use needs separate permission.
+[MIT](LICENSE).
 
-The bundled base theme comes from Super Productivity and stays under the MIT
-license; see [NOTICE.md](NOTICE.md). Not affiliated with Apple or the Super
+The bundled base theme comes from Super Productivity and is also under the
+MIT license, with its own copyright; see [NOTICE.md](NOTICE.md). Not affiliated with Apple or the Super
 Productivity project.

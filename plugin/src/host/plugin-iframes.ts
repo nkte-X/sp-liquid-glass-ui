@@ -5,6 +5,11 @@
 // UI kit paints it with var(--card-bg) — lets the page under it read
 // through. Plugin iframes are same-origin, so add a small override after the
 // injected tokens: opaque card surface, and a proper glass dialog.
+//
+// Only while the Liquid Glass theme is active (bundled or installed through
+// Settings → Theme): with any other theme the iframe's own tokens are right
+// and must not be touched, so without our tokens css() yields nothing and
+// any earlier override is removed.
 
 import type { Disposer } from './disposer';
 import { A11Y_QUERIES, prefersReducedTransparency, watchMedia } from './env';
@@ -14,16 +19,17 @@ const HOST_TOKENS_ID = 'injected-theme-vars'; // marks a plugin iframe
 
 const css = (): string => {
   const cs = getComputedStyle(document.body);
+  const solid = cs.getPropertyValue('--lgx-surface-solid').trim();
+  const dialogTint = cs.getPropertyValue('--lgx-dialog-bg').trim();
+  if (!solid || !dialogTint) return ''; // not our theme
   const dark = document.body.classList.contains('isDarkTheme');
-  const solid = cs.getPropertyValue('--lgx-surface-solid').trim() || (dark ? '#1f2026' : '#f7f8fb');
   // Reduce Transparency: an opaque dialog, no blur anywhere.
   const reduce = prefersReducedTransparency();
   const dialogBg = reduce
     ? dark
       ? '#2c2c2e'
       : '#ffffff'
-    : cs.getPropertyValue('--lgx-dialog-bg').trim() ||
-      (dark ? 'rgba(36, 37, 44, 0.9)' : 'rgba(255, 255, 255, 0.9)');
+    : dialogTint;
   const blur = reduce ? 'none' : 'blur(40px) saturate(180%)';
   const radius = cs.getPropertyValue('--lgx-r-dialog-now').trim() || '26px';
   // The scrim only dims (iOS): a blurred scrim under a blurred dialog would
@@ -51,6 +57,10 @@ const patch = (iframe: HTMLIFrameElement, text: string): void => {
     return; // cross-origin: not a plugin iframe
   }
   if (!doc?.head || !doc.getElementById(HOST_TOKENS_ID)) return;
+  if (!text) {
+    doc.getElementById(STYLE_ID)?.remove();
+    return;
+  }
   let style = doc.getElementById(STYLE_ID) as HTMLStyleElement | null;
   if (!style) {
     style = doc.createElement('style');

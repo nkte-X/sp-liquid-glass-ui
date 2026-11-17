@@ -30,18 +30,23 @@ const SIDENAV = 'magic-side-nav .nav-sidenav';
 const IGNORE = '.cdk-overlay-container, .mobile-bottom-nav, main-header, add-task-bar, .action-bar, textarea';
 
 export const startScrollEdge = (d: Disposer): void => {
-  const marked = new Set<Element>();
+  // No element registry: scrollers live inside routed pages and plugin views
+  // live in iframes, both of which the app removes on navigation. Holding them
+  // here would keep every detached page tree / iframe window alive for the
+  // whole session. Cleanup finds what is still marked via the DOM instead.
   const pending = new Set<Element>();
   let frame = 0;
+  let alive = true;
 
   const mark = (el: Element, cls: string, on: boolean): void => {
     el.classList.toggle(cls, on);
-    if (on) marked.add(el);
   };
 
   const flush = (): void => {
     frame = 0;
+    if (!alive) return;
     for (const el of pending) {
+      if (!el.isConnected) continue;
       const on = el.scrollTop > 1;
       if (el.matches(SIDENAV)) {
         mark(el, EDGE, on);
@@ -49,7 +54,6 @@ export const startScrollEdge = (d: Disposer): void => {
         if (list) {
           const vt = el.getBoundingClientRect().top - list.getBoundingClientRect().top;
           list.style.setProperty('--lgx-vt', `${Math.max(0, Math.round(vt))}px`);
-          if (on) marked.add(list);
         }
       }
       else if (el.closest('.route-wrapper, right-panel')) {
@@ -65,7 +69,7 @@ export const startScrollEdge = (d: Disposer): void => {
 
   /** Long lists show more content below before any scroll happens. */
   const probe = (): void => {
-    if (!document.body.classList.contains('hasMobileBottomNav')) return;
+    if (!alive || !document.body.classList.contains('hasMobileBottomNav')) return;
     for (const el of document.querySelectorAll('.route-wrapper *, right-panel *')) {
       if (el.scrollHeight > el.clientHeight + 1 && el.clientHeight > 0) {
         const oy = getComputedStyle(el).overflowY;
@@ -90,10 +94,23 @@ export const startScrollEdge = (d: Disposer): void => {
     { capture: true, passive: true },
   );
 
-  // Plugin views scroll inside their iframe document.
-  const hooked = new WeakSet<HTMLIFrameElement>();
+  // Plugin views scroll inside their iframe document. The listener lives on
+  // the iframe's window; the WeakMap only lets cleanup find it again, and lets
+  // a closed iframe be collected together with its window.
+  type Hook = { win: Window; onScroll: () => void };
+  const hooks = new WeakMap<HTMLIFrameElement, Hook>();
+  const unhook = (f: HTMLIFrameElement): void => {
+    const h = hooks.get(f);
+    if (!h) return;
+    hooks.delete(f);
+    try {
+      h.win.removeEventListener('scroll', h.onScroll, { capture: true });
+    } catch {
+      // iframe gone
+    }
+  };
   const hookIframe = (f: HTMLIFrameElement): void => {
-    if (hooked.has(f)) return;
+    if (!alive) return;
     let win: Window | null = null;
     try {
       win = f.contentWindow;
@@ -101,25 +118,20 @@ export const startScrollEdge = (d: Disposer): void => {
     } catch {
       return;
     }
-    if (!win) return;
-    hooked.add(f);
+    if (!win || hooks.get(f)?.win === win) return;
+    unhook(f);
+    const w = win;
     const onScroll = (): void => {
       let y = 0;
       try {
-        y = win!.scrollY || win!.document.scrollingElement?.scrollTop || 0;
+        y = w.scrollY || w.document.scrollingElement?.scrollTop || 0;
       } catch {
         return;
       }
       mark(f, FADE, y > 1);
     };
-    win.addEventListener('scroll', onScroll, { passive: true, capture: true });
-    d.add(() => {
-      try {
-        win!.removeEventListener('scroll', onScroll, { capture: true });
-      } catch {
-        // iframe gone
-      }
-    });
+    w.addEventListener('scroll', onScroll, { passive: true, capture: true });
+    hooks.set(f, { win: w, onScroll });
   };
   const hookAll = (): void => {
     for (const f of document.querySelectorAll('iframe')) hookIframe(f);
@@ -130,32 +142,38 @@ export const startScrollEdge = (d: Disposer): void => {
     'load',
     (e) => {
       if (e.target instanceof HTMLIFrameElement) {
-        hooked.delete(e.target); // new document inside: re-hook
+        unhook(e.target); // new document inside: re-hook
         hookIframe(e.target);
       }
     },
     { capture: true },
   );
   // plugin views mount on navigation
+  let clickTimer: ReturnType<typeof setTimeout> | undefined;
   d.listen(
     document,
     'click',
-    () =>
-      setTimeout(() => {
+    () => {
+      clearTimeout(clickTimer);
+      clickTimer = setTimeout(() => {
         hookAll();
         probe();
-      }, 400),
+      }, 400);
+    },
     { passive: true },
   );
 
   d.add(() => {
+    alive = false;
+    clearTimeout(clickTimer);
     if (frame) cancelAnimationFrame(frame);
-    for (const el of marked) {
-      el.classList.remove(FADE, FADE_BOTTOM, EDGE);
-      (el as HTMLElement).style?.removeProperty('--lgx-vt');
-    }
+    pending.clear();
+    for (const f of document.querySelectorAll('iframe')) unhook(f);
     for (const el of document.querySelectorAll(`.${FADE}, .${FADE_BOTTOM}, .${EDGE}`)) {
       el.classList.remove(FADE, FADE_BOTTOM, EDGE);
+    }
+    for (const el of document.querySelectorAll<HTMLElement>(`${SIDENAV} .nav-list`)) {
+      el.style.removeProperty('--lgx-vt');
     }
   });
 };
